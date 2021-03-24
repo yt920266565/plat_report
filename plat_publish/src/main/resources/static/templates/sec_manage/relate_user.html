@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <title>关联用户</title>
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <link rel="stylesheet" href="../../layui-v2.5.6/layui/css/layui.css"  media="all">
+  <script type="text/javascript" src="../../js/jquery-2.1.1.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="../../h-ui/h-ui/css/H-ui.min.css">
+  <link rel="stylesheet" href="../../h-ui/h-ui/css/iconfont.css" media="all"/>
+  <script src="/static/js/common.js" charset="utf-8"></script>
+  <!-- ztree -->
+	<link href="../../ztree/css/zTreeStyle/zTreeStyle.css" rel="stylesheet" />
+	<script src="../../ztree/js/jquery.ztree.all.js"></script>
+</head>
+<body>
+<div class="layui-btn-group demoTable" style="margin:15px 0px 39px">
+</div>
+
+<div class="r" id="item-qry" style="margin-right:68%;margin-top:18px">
+	<input type="text"  data-type="reload" id="staff" placeholder="请输入工号/姓名" autocomplete="off" style="width:180px;" class="input-text radius">
+    <button id="btnSearch" data-type="reload" class="btn btn-primary radius"><i class="Hui-iconfont">&#xe665;</i></button>
+</div>
+
+<div style='height: 100%;border: 1px solid gray;width: 100%;'>
+	<div class="easyui-resizable " id="tree" style='min-height:420px;width: 18%;height: 100%;border: 1px solid gray;float:left;'>
+	     <div>
+	         <button class="layui-btn layui-btn-fluid" onClick=""><i class="layui-icon">&#xe65a;</i> 
+             </button>
+         </div>
+	     <ul id="strtree" class="ztree"></ul>
+	</div>
+	<div  style='min-height:420px;height: 100%;width: 100%;margin-top:-19px;'> 
+		<table class="layui-table"  lay-filter="demo" id="testReload">	   
+		</table>
+    </div>
+</div>
+<div style="margin-top:10px" >
+	<label class="layui-form-label">角色描述：</label>
+     <div class="layui-input-inline">
+      <input id="description" style="width:520px;" placeholder="描述角色权限" class="layui-input" >
+      <input id="roleId" type="hidden" class="layui-input" >
+    </div>
+</div>
+<div style="margin-top:10px" >
+	<label class="layui-form-label">已有人员：</label>
+     <div class="layui-input-block">
+      <textarea id="users"  class="layui-textarea" ></textarea>
+    </div>
+</div>
+
+	 <div style="margin-top:10px;margin-left:7%;">
+	 	 <button type="submit" class="layui-btn" id="save">保存</button>
+	 	 <button type="button" class="layui-btn layui-btn-primary" id="realRet">返回</button>
+	 </div>
+<script src="../../layui-v2.5.6/layui/layui.js" charset="utf-8"></script>
+ 
+<script>
+
+init();
+function init(){
+	var setting = {
+			 data: {
+		            simpleData: {
+		                enable: true,
+		                idKey : "id",
+		                pIdKey : "pid",
+		               },
+		             key : {
+		            	 name : "name"
+		                 },
+		             keep : {
+		                    parent : true,//没有子节点也保持父节点状态
+		                    leaf : false
+		               }
+		        },
+	        callback: {
+	    		onClick: zTreeOnClick
+	    	}
+	    };
+	  var strdata = [];
+	  $.ajax({
+		  url:'/departments?id=3',
+		  type:'get',
+		  dataTyoe:'json',
+		  async:false,
+		  success:function(res){
+			  if(res.status == 200){
+				  for(var i=0;i<res.data.length;i++){
+					  strdata.push({"id":res.data[i].id,"name":res.data[i].name,"pid":res.data[i].pid});
+				  }
+			  }
+		  },
+		  error:function(){
+			  layer.msg("功能权限获取失败");
+		  }
+		  
+	  });
+	  $.fn.zTree.init($("#strtree"), setting, strdata);
+	  expand();
+  layui.use('table', function(){
+	  var table = layui.table;
+	  table.render({
+		    elem: '#testReload'
+		    ,url:'/departments/users'
+	    	,parseData:function(res){ 
+	        	return parseData(res); //common.js里面
+	        }
+		    ,headers:{Authorization:"Bearer "+token}
+		    ,cols: [[
+		       {type:'checkbox',style:'background:#e2e2e2',title:'全选'}
+		      ,{field:'username',title:'工号',align:'center',width:'15%'}
+		      ,{field:'realname',title:'姓名',align:'center',width:'15%'}
+		      ,{field:'rolename',title:'角色',align:'center',width:'25%'}
+		      ,{field:'phone',title:'电话',align:'center',width:'12%'}
+		      ,{field:'email',title:'企业邮箱',align:'center',width:'13%'}
+		    ]]
+		    ,page: true
+		    ,id:'testReload'
+		 });
+  });
+}
+
+  //设置节点展开
+  function expand(){
+	  var treeObj = $.fn.zTree.getZTreeObj("strtree");
+	  var nodes = treeObj.getNodes();
+	  for (var i = 0; i < nodes.length; i++) { //设置节点展开
+        treeObj.expandNode(nodes[i], true, false, true);
+	    var nodespan = nodes[i].children;
+		for(var j = 0; j < nodespan.length; j++) { //设置节点展开第三级节点
+			treeObj.expandNode(nodespan[j], true, false, true);
+		}
+      } 
+  }
+  //ztree点击的回调函数
+  function zTreeOnClick(){
+		zTreeOnClicks();
+ }
+  
+  layui.use('table', function(){
+	  var table = layui.table;
+	  var $ = layui.$, active = {
+	    deptReloads: function(){
+	    	var zTree = $.fn.zTree.getZTreeObj("strtree");
+			var nodes = zTree.getSelectedNodes();
+			var treeNode = nodes[0];
+			var deptId = treeNode.id; 
+			var data = {deptId:deptId,"staff":''};
+	       //执行重载
+	       table.reload('testReload', {
+	         page: {
+	           curr: 1 //重新从第 1 页开始
+	         }
+	         ,where: data
+	       });
+	     },reload:function(){
+	    	var userid = $('#staff').val();
+	    	var data = {"staff":userid,"deptId":''};
+	    	 table.reload('testReload', {
+		         page: {
+		           curr: 1 //重新从第 1 页开始
+		         }
+		         ,where: data
+		       });
+	     }
+	    
+	  };
+	  window.zTreeOnClicks = function(){
+		  var type = "deptReloads";
+		  active[type] ? active[type].call(this) : '';
+	  }
+	 /*  $('.demoTable .layui-btn').on('click', function(){
+ 	    var type = $(this).data('type');
+	    active[type] ? active[type].call(this) : '';
+	  }); */
+	  
+	  $('#btnSearch').on('click', function(){
+ 	    var type = $(this).data('type');
+	    active[type] ? active[type].call(this) : '';
+	  });
+	  
+});
+</script>
+<script>
+var storage=window.localStorage;
+var token = storage.getItem("token");
+var savedata = [];
+$('#save').click(function(){
+	getData();
+	if(savedata.length == 0){
+		return layer.msg('请选择人员!');
+	}
+	var roleId = $('#roleId').val();
+	$.ajax({
+		url:"/roles/"+roleId+"/users",
+		type:'post',
+		data:JSON.stringify(savedata),
+		beforeSend:function(request){
+		  request.setRequestHeader("Authorization","Bearer "+token);
+		},
+		contentType:'application/json;charset=UTF-8',
+		dataType:'json',
+		success:function(res){
+			if(res.status == 200){
+				top.layer.msg('保存成功',{icon:1,time:1000});
+				savedata = [];
+				$.ajax({
+					url:'/users/roles?roleId='+roleId,
+					type:'get',
+					dataType:'json',
+					success:function(res){
+						$('#users').val(res.data.users);
+					}
+				})
+			}else if(res.status == 403){
+				top.layer.msg('没有权限',{time:1000});
+				savedata = [];
+			}else{
+				top.layer.msg('提交失败',{time:1000});
+				savedata = [];
+			}
+		},
+		error:function(){
+			top.layer.msg('出错了!',{time:1000});
+			savedata = [];
+		}
+		
+	})
+	
+})
+function getData(){
+	layui.use('table', function(){
+		  var table = layui.table;
+	  /* table.on('checkbox(demo)',function(obj){
+		  var data = obj.data; */
+		  var checkStatus=table.checkStatus('testReload'),
+          data=checkStatus.data;
+		  for(var i=0;i<data.length;i++){
+			  savedata.push({"id":data[i].id,"username":data[i].username,"phone":data[i].phone,"email":data[i].email})
+		  }
+	});
+}
+  function initData(data){
+	  var description = data.description;
+	  var roleId = data.id;
+	  $('#description').val(description);
+	  $('#roleId').val(roleId);
+	  $('#users').val(data.users);
+  }
+  $('#realRet').click(function(){
+	  parent.layer.closeAll();
+  }) 
+	  
+	  $('#staff').keyup(function(event){
+		if(event.keyCode == 13){
+			  $('#btnSearch').click();
+		}
+	})
+	 
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>产品软件</title>
+  <link rel="stylesheet" href="/static/layui-v2.5.6/layui/css/layui.css"  media="all">
+  <link href="/static/layui-v2.5.6/layui/css/modules/layer/default/layer.css" rel="stylesheet"/>
+  <script src="/static/js/jquery.min.js" charset="utf-8"></script>
+  <script src="/static/layui-v2.5.6/layui/layui.js" charset="utf-8"></script>
+  <script src="/static/js/common.js" charset="utf-8"></script>
+  <script src="/static/templates/access_record/access_record.js" charset="utf-8"></script>
+</head>
+<style type="text/css">
+.layui-table-cell {
+    height: 23px;
+}
+</style>
+
+<body >
+ 	<div style="margin-top:50px;">
+	 	 <button type="button" class="layui-btn" id="add">新增</button>
+	 </div>
+  
+	<table class="layui-table" lay-filter="keyTable" id="keyTable">
+	 
+	</table>
+
+</body>
+
+<script type="text/html" id="barDemo">
+  <a class="layui-btn layui-btn-xs" id="edit" lay-event="edit">编辑</a>
+  <a class="layui-btn layui-btn-danger layui-btn-xs" id="del" lay-event="del">删除</a>
+</script> 
+
+<script type="text/javascript">
+var storage=window.localStorage;
+var token = storage.getItem("token");
+layui.use(['form','table'],function(){
+  	var form = layui.form,laydate = layui.laydate,$ = layui.$,table = layui.table;
+	table.render({
+		elem : '#keyTable'
+		,url : '/departKey'
+		,parseData:function(res){ 
+	       	return parseData(res); //common.js里面
+	     }
+	    ,headers:{Authorization:"Bearer "+token}	
+		,cols : [[
+		     {field:'name',align:'center', title: '部门',width:'20%'}
+		    ,{field:'keywords',align:'center', title: '关键字',width:'60%'}
+		    ,{field:'', align:'center',width:'20%',toolbar: '#barDemo',title:'操作'}
+		]]
+		,id : 'keyTable'
+		,page:true
+	});
+	
+	table.on('tool(keyTable)',function(obj){
+		  var data = obj.data;
+		  if(obj.event == 'edit'){
+			  layer.open({
+				  type:2,
+				  title:'修改关键字',
+				  shadeClose: true,
+			      shade: 0.8,
+			      scrollbar: false,
+			      resize:false,
+			      area: ['967px', '310px'],
+		  	      content: '/static/templates/define_keywords/keywords_edit.html?keywords='+encodeURIComponent(data.keywords)+'&departId='+encodeURIComponent(data.departId),
+		  	      success:function(layero,index){
+		  	      },
+		  	      end:function(){
+	 	             $('.layui-laypage-btn').click();
+		  	      }
+			  });
+		  }else if(obj.event == 'del'){
+			  $.ajax({
+				  url:'/departKey?departId='+data.departId,
+				  type:'delete',
+				  dataType:'json',
+				  beforeSend:function(request){
+						request.setRequestHeader("Authorization","Bearer "+token);
+				  },
+				  success:function(res){
+					  if(res.status != 200){
+						  return layer.msg(res.errMsg);
+					  }
+					  $('.layui-laypage-btn').click();
+					  return layer.msg('删除成功',{icon:1,time:1000})
+				  },error:function(){
+					  layer.msg('系统出错了!');
+				  }
+			  })
+		  }
+	})
+	
+	$('#add').click(function(){
+		layer.open({
+				  type:2,
+				  title:'添加关键字',
+				  shadeClose: true,
+			      shade: 0.8,
+			      scrollbar: false,
+			      resize:false,
+			      area: ['50%', '50%'],
+		  	      content: '/static/templates/define_keywords/keywords_edit.html',
+		  	      success:function(layero,index){
+		  	    	var iframeWin = window['layui-layer-iframe' + index];
+		  	      },
+		  	      end:function(){
+	 	             $('.layui-laypage-btn').click();
+		  	      }
+		});
+	})
+	
+})
+
+
+
+</script>
+
+</html>

@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <title>添加角色</title>
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <link rel="stylesheet" href="../../layui-v2.5.6/layui/css/layui.css"  media="all">
+  <link rel="stylesheet" href="../../css/bootstrap.min.css">
+  <script type="text/javascript" src="../../js/jquery-2.1.1.min.js"></script>
+  <!-- ztree -->
+	<link href="../../ztree/css/zTreeStyle/zTreeStyle.css" rel="stylesheet" />
+	<script src="../../ztree/js/jquery.ztree.all.js"></script>
+	<style>
+		.layui-form-checkbox {
+			margin-top: 10px;
+		}
+	</style>
+</head>
+<body>
+   <div style="margin-left:11%;display:inline-block;" >    
+    
+	<label class="layui-form-label">角色名称：</label>
+    <div class="layui-input-inline">
+    <input type="text" id="roleName" lay-verify="required" placeholder="请输入" autocomplete="off" class="layui-input">
+    </div>
+   </div>
+   <div style="margin-top:40px;margin-left: 4%;display:inline-block;">
+	 	 <button type="submit" class="layui-btn" id="addrole">添加</button>
+	 </div>
+	
+    <div class="layui-container" style='margin-top:20px;'>
+	     <div class="layui-row layui-col-space20">
+		   <div class="layui-col-xs3 layui-col-mid3 layui-col-lg3">
+			    <div class="panel panel-success" >
+					<div class="panel-heading">
+						<div class="panel-title" >数据权限</div>
+					</div>
+		            <div>
+					   <ul id="datatree" class="ztree"></ul>
+				  	</div>
+				</div>
+		   </div>
+		   
+		   <div class="layui-col-xs3 layui-col-mid3 layui-col-lg3">
+			   <div class="panel panel-info" >
+					<div class="panel-heading">
+						<div class="panel-title" >功能权限</div>
+					</div>
+		            <div>
+					   <ul id="funtree" class="ztree"></ul>
+				  	</div>
+				</div>
+		   </div>
+		   
+		   <div  style="text-align:center;" class="layui-col-xs2 layui-col-mid2 layui-col-lg2">
+		  		 <div class="panel panel-info" >
+					<div class="panel-heading">
+						<div class="panel-title" >测试角色负责的版本层级</div>
+					</div>
+					
+		            <div>
+					    <form class="layui-form" id="addform">
+	   	     		    </form>
+				  	</div>
+				</div>
+   	       </div>
+		   
+		</div>
+		
+	 </div>
+	 
+	   
+	 
+<script src="../../layui-v2.5.6/layui/layui.js" charset="utf-8"></script>
+<script type="text/html" id="barDemo">
+  <a class="layui-btn layui-btn layui-btn" lay-event="deal">处理</a>
+</script>        
+<script>
+var storage=window.localStorage;
+var token = storage.getItem("token");
+//可选版本层级
+$.ajax({
+	url:'/roles/verlevel',
+	type:'get',
+	dataType:'json',
+	success:function(res){
+		if(res.status != 200 || res.data.length == 0){
+			return;
+		}
+		var data = res.data;
+		var html = '';
+		for(var i=0;i<data.length;i++){
+			if(data[i].verlevel == '产品' || data[i].verlevel == '模块'){
+				html += '<input type="checkbox" name='+data[i].verlevel+' value='+data[i].id+' checked title='+data[i].verlevel+'>'
+			}else{
+				html += '<input type="checkbox" name='+data[i].verlevel+' value='+data[i].id+' title='+data[i].verlevel+'>'
+			}
+		}
+		$('#addform').append(html);
+	}
+})
+
+  var setting = {
+			 view: {
+		        showIcon: true,
+		        addHoverDom: false,
+		        removeHoverDom: false,
+		        selectedMulti: false,
+		    }, 
+		    check: {
+		    	enable: true,
+				chkStyle: "checkbox",
+				chkboxType: { "Y": "s", "N": "s" }
+			},
+		    data: {
+	            simpleData: {
+	                enable: true,
+	                idKey : "id",
+	                pIdKey : "pid",
+	               },
+	             key : {
+	            	 name : "name"
+	                  },
+	             keep : {
+	                    parent : true,//没有子节点也保持父节点状态
+	                    leaf : false
+	               }
+	        },
+	         edit: {
+	        	drag: {
+	    			autoExpandTrigger: true,
+	    			prev: false,
+	    			next: false,
+	    			inner: true
+	    		},
+				enable: true,
+				showRemoveBtn: false,
+				showRenameBtn: false
+			},
+			callback: {
+				beforeDrag: beforeDrag,
+				beforeDrop: beforeDrop,
+				onClick: zTreeOnClick,
+			} 
+		};
+  var fundata = [];
+  var treedata =[];
+  $.ajax({
+	  url:'/functions',
+	  type:'get',
+	  dataTyoe:'json',
+	  async:false,
+	  success:function(res){
+		  if(res.status == 200){
+			  for(var i=0;i<res.data.length;i++){
+				  fundata.push({"id":res.data[i].id,"name":res.data[i].description,"pid":res.data[i].pid});
+			  }
+		  }
+	  },
+	  error:function(){
+		  layer.msg("功能权限获取失败");
+	  }
+	  
+  });
+  $.ajax({
+	  url:'/departments?id=3',
+	  type:'get',
+	  dataTyoe:'json',
+	  async:false,
+	  success:function(res){
+		  if(res.status == 200){
+			  for(var i=0;i<res.data.length;i++){
+				  treedata.push({"id":res.data[i].id,"name":res.data[i].name,"pid":res.data[i].pid});
+			  }
+		  }
+	  },
+	  error:function(){
+		  layer.msg("功能权限获取失败");
+	  }
+	  
+  });
+ 
+  $.fn.zTree.init($("#funtree"), setting, fundata).expandAll(true);
+  $.fn.zTree.init($("#datatree"), setting, treedata);
+  var treeObj = $.fn.zTree.getZTreeObj("datatree");
+  var nodes = treeObj.getNodes();
+  for (var i = 0; i < nodes.length; i++) { //设置节点展开
+      treeObj.expandNode(nodes[i], true, false, true);
+  } 
+  var role = {};
+  var departments = [];
+  var functions = [];
+  $('#addrole').click(function(){
+	  zTreeOnClick();
+	  if(role.name == '' || role.name == undefined){
+		  return layer.msg('请填写角色名称');
+	  }
+	  if(role.departments == '' || role.departments == undefined){
+		  return layer.msg('请选择数据权限');
+	  }
+	  if(role.functions == '' || role.functions == undefined){
+		  return layer.msg('请选择功能权限');
+	  }
+	  for(var i=0;i<functions.length;i++){
+		  //测试权限
+		  if(functions[i].id == 30 && role.verlevel.length == 0){
+			  return layer.msg('测试角色请勾选所负责的版本层级');
+		  }
+	  }
+	   $.ajax({
+		  url:'/roles',
+		  type:'post',
+		  beforeSend:function(request){
+				request.setRequestHeader("Authorization","Bearer "+token);
+		  },
+		  data:JSON.stringify(role),
+		  contentType:'application/json;charset=UTF-8',
+		  dataType:'json',
+		  success:function(res){
+			  if(res.status == 200){
+				  top.layer.msg('角色添加成功',{icon:1,time:800});
+				  window.parent.location.reload();
+			  }else if(res.status == 403){
+				  layer.msg('没有角色添加权限!',{icon:0});
+			  }else{
+				  layer.msg('角色添加失败,请检查角色名是否重复!',{icon:0});
+			  }
+		  },
+		  error:function(){
+			  layer.msg("出错了!");
+		  }
+	  }); 
+  })
+  
+  function zTreeOnClick() { 
+	  var roleName = $('#roleName').val();
+      var funObj = $.fn.zTree.getZTreeObj("funtree");
+      var depObj = $.fn.zTree.getZTreeObj("datatree");
+      departments = depObj.getCheckedNodes(true);
+      functions = funObj.getCheckedNodes(true);
+      var verlevel = [];
+      $('input[type=checkbox]:checked').each(function() {
+          verlevel.push($(this).val());
+      });
+      role.verlevel = verlevel;
+      role.departments = departments;
+      role.functions = functions; 
+      role.name = roleName;
+  }
+//树操作函数
+  function beforeDrag(treeId, treeNodes) {
+  	for (var i=0,l=treeNodes.length; i<l; i++) {
+  		if (treeNodes[i].drag === false) {
+  			return false;
+  		}
+  	}
+  	return true;
+  }
+  function beforeDrop(treeId, treeNodes, targetNode, moveType) {
+	  var checkedNodes = treeObj.getCheckedNodes();
+	  	 var selectedNodes = treeObj.getSelectedNodes();
+  	return targetNode ? targetNode.drop !== false : true;
+  }
+
+ layui.use(['tree','util'], function(){
+  var tree = layui.tree;
+  var util = layui.util;
+  
+	  
+	  $('.demoTable .layui-btn').on('click', function(){
+	    var type = $(this).data('type');
+	    active[type] ? active[type].call(this) : '';
+	  });
+}); 
+</script>
+
+</body>
+</html>
